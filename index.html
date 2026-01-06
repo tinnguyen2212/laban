@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>La Bàn Phong Thủy (Size Lớn) & Tiết Khí</title>
+    <style>
+        /* --- CẤU TRÚC CƠ BẢN --- */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            overflow: hidden;
+            padding-top: 15px;
+            box-sizing: border-box;
+        }
+
+        /* --- TABS --- */
+        .tabs-nav {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 4px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px; /* Tăng chiều rộng để cân đối với la bàn to */
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            border-radius: 9px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background-color: #fff;
+            color: #000;
+            font-weight: 700;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+        .tab-content.active { display: flex; }
+
+        /* --- LA BÀN (UPDATED SIZE +20%) --- */
+        .compass-wrapper {
+            position: relative;
+            width: 360px;  /* Tăng từ 300px lên 360px */
+            height: 360px; /* Tăng từ 300px lên 360px */
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-top: 5px;
+            transition: transform 0.1s;
+        }
+        .compass-face { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        text { font-family: 'Arial', sans-serif; font-weight: 700; fill: #333; text-transform: uppercase; }
+        .text-ring-outer { font-size: 10px; fill: #444; font-weight: 600; }
+        .text-ring-inner { font-size: 11px; fill: #000; font-weight: 800; letter-spacing: 1px;}
+        
+        .needle-container { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 10; transition: transform 0.1s linear; }
+        
+        .needle { 
+            position: absolute; 
+            bottom: 50%; 
+            left: 50%; 
+            height: 168px; /* Tăng từ 140px (140 * 1.2) */
+            width: 3px;    /* Đậm hơn chút */
+            background-color: #d00000; 
+            transform-origin: bottom center; 
+            transform: translateX(-50%); 
+        }
+        
+        .needle::after { 
+            content: ''; 
+            position: absolute; 
+            top: 0; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            border-left: 8px solid transparent;   /* To hơn */
+            border-right: 8px solid transparent;  /* To hơn */
+            border-bottom: 20px solid #d00000;    /* To hơn */
+        }
+        
+        .center-dot { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            width: 18px;   /* To hơn */
+            height: 18px;  /* To hơn */
+            background-color: #fff; 
+            border: 4px solid #333; 
+            border-radius: 50%; 
+            transform: translate(-50%, -50%); 
+            z-index: 11; 
+        }
+
+        .compass-info-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 90%; max-width: 360px; /* Nới rộng bar thông tin */
+            margin-top: 15px; padding: 0 5px;
+        }
+        .degree-num { font-size: 1.6rem; font-weight: 800; color: #333; line-height: 1; }
+        .degree-text { font-size: 0.95rem; color: #d00000; font-weight: 600; }
+        .btn-gear { width: 36px; height: 36px; border-radius: 50%; border: none; background: white; color: #555; font-size: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; }
+        .btn-gear.active { background-color: #007aff; color: white; animation: spin 4s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- CONTAINER CHÍNH --- */
+        .picker-container {
+            width: 95%; max-width: 400px; /* Nới rộng container */
+            background: white; border-radius: 16px;
+            margin-top: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column;
+        }
+        .picker-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f0f0f0; background: #fff; }
+        .picker-title { font-size: 15px; font-weight: 600; color: #333; }
+        
+        .ios-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .ios-switch input { opacity: 0; width: 0; height: 0; }
+        .ios-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e9e9ea; transition: .4s; border-radius: 34px; }
+        .ios-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .ios-slider { background-color: #34c759; } 
+        input:checked + .ios-slider:before { transform: translateX(20px); }
+
+        /* --- INPUT THỦ CÔNG --- */
+        .manual-input-area {
+            display: none; /* Mặc định ẩn */
+            padding: 15px;
+            background: #fff;
+            animation: fadeIn 0.3s ease;
+        }
+        .manual-input-area.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .input-group label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .input-field {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            outline: none;
+            box-sizing: border-box;
+            background: #f9f9f9;
+        }
+        .input-field:focus {
+            border-color: #007aff;
+            background: #fff;
+        }
+        /* Năm rộng hơn chút */
+        .input-group.year { flex: 1.5; }
+
+        /* BOX THÔNG TIN PHỤ DƯỚI INPUT */
+        .info-preview {
+            background-color: #f0f7ff;
+            border: 1px solid #cce5ff;
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .preview-lunar { font-size: 1.1rem; font-weight: 700; color: #0056b3; margin-bottom: 4px; }
+        .preview-canchi { font-size: 0.9rem; color: #555; margin-bottom: 4px; font-weight: 500;}
+        .preview-term { font-size: 0.85rem; color: #28a745; font-weight: 600; }
+
+
+        /* --- TAB 2: CHI TIẾT --- */
+        .clock-card {
+            width: 88%; max-width: 380px; background: white; border-radius: 24px;
+            padding: 25px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); text-align: center; display: flex; flex-direction: column; gap: 10px;
+        }
+        .card-day { font-size: 1.1rem; color: #666; margin-bottom: 5px; text-transform: capitalize; }
+        .card-time { font-size: 3.8rem; font-weight: 800; color: #333; line-height: 1; margin: 5px 0; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+        .card-date { font-size: 1.05rem; color: #777; margin-bottom: 15px; }
+        .card-lunar { font-size: 1.2rem; color: #007aff; font-weight: 700; padding-top: 15px; margin-bottom: 10px; border-top: 1px solid #eee; width: 100%; }
+        
+        /* Chế độ Lịch */
+        .calendar-mode-toggle {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #f5f5f7;
+            padding: 8px;
+            border-radius: 12px;
+        }
+        .toggle-label { font-size: 0.9rem; font-weight: 600; color: #555; }
+        .mode-text { font-size: 0.9rem; font-weight: 700; color: #007aff; min-width: 80px; text-align: left; }
+
+        .canchi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 10px; }
+        .cc-item { background-color: #f8f9fa; border-radius: 12px; padding: 12px 15px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+        .cc-label { font-size: 0.8rem; color: #888; font-weight: 500; }
+        .cc-value { font-size: 1rem; color: #222; font-weight: 700; }
+
+        .solar-term-card { background-color: #e8f5e9; border-radius: 12px; padding: 12px 15px; margin-top: 5px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .st-label { font-size: 0.8rem; color: #2e7d32; font-weight: 600; text-transform: uppercase; }
+        .st-name { font-size: 1.2rem; font-weight: 700; color: #1b5e20; }
+        .st-time-row { width: 100%; display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; border-bottom: 1px dashed rgba(0,0,0,0.1); padding: 3px 0; }
+        .st-time-row:last-child { border-bottom: none; }
+        .st-t-label { color: #555; font-weight: 600; }
+
+    </style>
+</head>
+<body>
+
+    <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('compass')">La Bàn & Ngày</button>
+        <button class="tab-btn" onclick="switchTab('clock')">Chi Tiết</button>
+    </div>
+
+    <!-- TAB 1: LA BÀN & PICKER -->
+    <div id="tab-compass" class="tab-content active">
+        <div class="compass-wrapper" id="compassZone">
+            <svg class="compass-face" viewBox="0 0 380 380" id="compassSvg">
+                <defs>
+                    <path id="pathOuter" d="M 190, 190 m -165, 0 a 165,165 0 1,1 330,0 a 165,165 0 1,1 -330,0" />
+                    <path id="pathInner" d="M 190, 190 m -135, 0 a 135,135 0 1,1 270,0 a 135,135 0 1,1 -270,0" />
+                </defs>
+                <g id="fengShuiLayer"></g>
+                <circle cx="190" cy="190" r="180" fill="none" stroke="#333" stroke-width="2" />
+                <circle cx="190" cy="190" r="150" fill="none" stroke="#333" stroke-width="1" />
+                <circle cx="190" cy="190" r="120" fill="none" stroke="#333" stroke-width="1" />
+                <g id="dynamicContent"></g>
+            </svg>
+            <div class="needle-container" id="needleContainer"><div class="needle"></div></div>
+            <div class="center-dot"></div>
+        </div>
+
+        <div class="compass-info-bar">
+            <div>
+                <div class="degree-num" id="degNum">0°</div>
+                <div class="degree-text" id="dirInfo">BẮC - Tý</div>
+            </div>
+            <button class="btn-gear" id="btnWheelMode" onclick="toggleWheelMode()" title="Chế độ lăn">⚙️</button>
+        </div>
+
+        <div class="picker-container">
+            <div class="picker-header">
+                <div class="picker-title" id="modeLabel">Thời gian thực</div>
+                <label class="ios-switch">
+                    <input type="checkbox" id="realTimeSwitch" checked onchange="toggleRealTime()">
+                    <span class="ios-slider"></span>
+                </label>
+            </div>
+
+            <!-- KHU VỰC NHẬP THỦ CÔNG -->
+            <div class="manual-input-area" id="manualInputArea">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Ngày</label>
+                        <input type="number" id="inpDay" class="input-field" min="1" max="31" oninput="updateFromInput()">
+                    </div>
+                    <div class="input-group">
+                        <label>Tháng</label>
+                        <input type="number" id="inpMonth" class="input-field" min="1" max="12" oninput="updateFromInput()">
+                    </div>
+                    <div class="input-group year">
+                        <label>Năm</label>
+                        <input type="number" id="inpYear" class="input-field" min="1900" max="2100" oninput="updateFromInput()">
+                    </div>
+                    <div class="input-group">
+                        <label>Giờ</label>
+                        <input type="number" id="inpHour" class="input-field" min="0" max="23" oninput="updateFromInput()">
+                    </div>
+                     <div class="input-group">
+                        <label>Phút</label>
+                        <input type="number" id="inpMin" class="input-field" min="0" max="59" oninput="updateFromInput()">
+                    </div>
+                </div>
+
+                <div class="info-preview" id="infoPreview">
+                    <!-- Thông tin sẽ hiện ở đây -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: CHI TIẾT -->
+    <div id="tab-clock" class="tab-content">
+        <div class="clock-card">
+            <div class="card-day" id="clockDay">Thứ ...</div>
+            <div class="card-time" id="clockTime">00:00</div>
+            <div class="card-date" id="clockDate">Ngày ... tháng ... năm ...</div>
+
+            <div class="card-lunar" id="clockLunar">
+                Ngày ... Âm lịch
+            </div>
+
+            <!-- Toggle Chế độ Lịch -->
+            <div class="calendar-mode-toggle">
+                <span class="toggle-label">Hệ lịch hiển thị:</span>
+                <label class="ios-switch" style="transform: scale(0.8);">
+                    <input type="checkbox" id="solarModeSwitch" checked onchange="updateClock()">
+                    <span class="ios-slider"></span>
+                </label>
+                <span class="mode-text" id="calendarModeText">Tiết Khí</span>
+            </div>
+
+            <div class="canchi-grid">
+                <div class="cc-item">
+                    <div class="cc-label">Can Chi Năm</div>
+                    <div class="cc-value" id="ccYear">...</div>
+                </div>
+                <div class="cc-item">
+                    <div class="cc-label">Can Chi Tháng</div>
+                    <div class="cc-value" id="ccMonth">...</div>
+                </div>
+                <div class="cc-item">
+                    <div class="cc-label">Can Chi Ngày</div>
+                    <div class="cc-value" id="ccDay">...</div>
+                </div>
+                <div class="cc-item">
+                    <div class="cc-label">Can Chi Giờ</div>
+                    <div class="cc-value" id="ccHour">...</div>
+                </div>
+            </div>
+
+            <div class="solar-term-card">
+                <div class="st-label">Tiết Khí</div>
+                <div class="st-name" id="solarTermName">...</div>
+                <div class="st-time-row">
+                    <span class="st-t-label">Bắt đầu:</span>
+                    <span id="solarTermStart">...</span>
+                </div>
+                <div class="st-time-row">
+                    <span class="st-t-label">Kết thúc:</span>
+                    <span id="solarTermEnd">...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CORE LOGIC (LỊCH & PHONG THỦY) ---
+        function INT(d) { return Math.floor(d); }
+        function jdFromDate(dd, mm, yy) {
+            var a = INT((14 - mm) / 12);
+            var y = yy + 4800 - a;
+            var m = mm + 12 * a - 3;
+            var jd = dd + INT((153 * m + 2) / 5) + 365 * y + INT(y / 4) - INT(y / 100) + INT(y / 400) - 32045;
+            if (jd < 2299161) { jd = dd + INT((153 * m + 2) / 5) + 365 * y + INT(y / 4) - 32083; }
+            return jd;
+        }
+        function getNewMoonDay(k, timeZone) {
+            var T = k / 1236.85; var T2 = T * T; var T3 = T2 * T; var dr = Math.PI / 180;
+            var Jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * T2 - 0.000000155 * T3;
+            Jd1 = Jd1 + 0.00033 * Math.sin((166.56 + 132.87 * T - 0.009173 * T2) * dr);
+            var M = 359.2242 + 29.10535608 * k - 0.0000333 * T2 - 0.00000347 * T3;
+            var Mpr = 306.0253 + 385.81691806 * k + 0.0107306 * T2 + 0.00001236 * T3;
+            var F = 21.2964 + 390.67050646 * k - 0.0016528 * T2 - 0.00000239 * T3;
+            var C1 = (0.1734 - 0.000393 * T) * Math.sin(M * dr) + 0.0021 * Math.sin(2 * dr * M);
+            C1 = C1 - 0.4068 * Math.sin(Mpr * dr) + 0.0161 * Math.sin(dr * 2 * Mpr);
+            C1 = C1 - 0.0004 * Math.sin(dr * 3 * Mpr);
+            C1 = C1 + 0.0104 * Math.sin(dr * 2 * F) - 0.0051 * Math.sin(dr * (M + Mpr));
+            C1 = C1 - 0.0074 * Math.sin(dr * (M - Mpr)) + 0.0004 * Math.sin(dr * (2 * F + M));
+            C1 = C1 - 0.0004 * Math.sin(dr * (2 * F - M)) - 0.0006 * Math.sin(dr * (2 * F + Mpr));
+            C1 = C1 + 0.0010 * Math.sin(dr * (2 * F - Mpr)) + 0.0005 * Math.sin(dr * (2 * Mpr + M));
+            var deltat;
+            if (T < -11) { deltat = 0.001 + 0.000839 * T + 0.0002261 * T2 - 0.00000845 * T3 - 0.000000081 * T * T3; } 
+            else { deltat = -0.000278 + 0.000265 * T + 0.000262 * T2; }
+            return INT(Jd1 + C1 - deltat + 0.5 + timeZone / 24);
+        }
+        function getSunLongitude(jdn, timeZone) {
+            var T = (jdn - 2451545.5 - timeZone / 24) / 36525; var T2 = T * T; var dr = Math.PI / 180;
+            var M = 357.52910 + 35999.05030 * T - 0.0001559 * T2 - 0.00000048 * T * T2;
+            var L0 = 280.46645 + 36000.76983 * T + 0.0003032 * T2;
+            var DL = (1.914600 - 0.004817 * T - 0.000014 * T2) * Math.sin(dr * M);
+            DL = DL + (0.019993 - 0.000101 * T) * Math.sin(dr * 2 * M) + 0.000290 * Math.sin(dr * 3 * M);
+            var L = L0 + DL; var omega = 125.04 - 1934.136 * T;
+            L = L - 0.00569 - 0.00478 * Math.sin(omega * dr);
+            return INT((L * dr - Math.PI * 2 * (INT(L * dr / (Math.PI * 2)))) / Math.PI * 6);
+        }
+        function getLunarMonth11(yy, timeZone) {
+            var off = jdFromDate(31, 12, yy) - 2415021; var k = INT(off / 29.530588853);
+            var nm = getNewMoonDay(k, timeZone);
+            if (getSunLongitude(nm, timeZone) >= 9) { nm = getNewMoonDay(k - 1, timeZone); }
+            return nm;
+        }
+        function getLeapMonthOffset(a11, timeZone) {
+            var k = INT((a11 - 2415021.076998695) / 29.530588853 + 0.5);
+            var last = 0; var i = 1; var arc = getSunLongitude(getNewMoonDay(k + i, timeZone), timeZone);
+            do { last = arc; i = i + 1; arc = getSunLongitude(getNewMoonDay(k + i, timeZone), timeZone); } while (arc != last && i < 14);
+            return i - 1;
+        }
+        function convertSolar2Lunar(dd, mm, yy, timeZone) {
+            var dayNumber = jdFromDate(dd, mm, yy);
+            var k = INT((dayNumber - 2415021.076998695) / 29.530588853);
+            var monthStart = getNewMoonDay(k + 1, timeZone);
+            if (monthStart > dayNumber) { monthStart = getNewMoonDay(k, timeZone); }
+            var a11 = getLunarMonth11(yy, timeZone); var b11 = a11; var lunarYear;
+            if (a11 >= monthStart) { lunarYear = yy; a11 = getLunarMonth11(yy - 1, timeZone); } 
+            else { lunarYear = yy + 1; b11 = getLunarMonth11(yy + 1, timeZone); }
+            var lunarDay = dayNumber - monthStart + 1; var diff = INT((monthStart - a11) / 29); var lunarLeap = 0; var lunarMonth = diff + 11;
+            if (b11 - a11 > 365) {
+                var leapMonthDiff = getLeapMonthOffset(a11, timeZone);
+                if (diff >= leapMonthDiff) { lunarMonth = diff + 10; if (diff == leapMonthDiff) { lunarLeap = 1; } }
+            }
+            if (lunarMonth > 12) { lunarMonth = lunarMonth - 12; }
+            if (lunarMonth >= 11 && diff < 4) { lunarYear -= 1; }
+            return [lunarDay, lunarMonth, lunarYear, lunarLeap];
+        }
+
+        const CAN = ["Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ", "Canh", "Tân", "Nhâm", "Quý"];
+        const CHI = ["Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi", "Thân", "Dậu", "Tuất", "Hợi"];
+        
+        // --- LOGIC LỊCH ÂM CŨ ---
+        function getCanChiObjLunar(dd, mm, yy, hh) {
+            let jd = jdFromDate(dd, mm, yy);
+            let lunar = convertSolar2Lunar(dd, mm, yy, 7);
+            let ly = lunar[2];
+            let canNam = CAN[(ly + 6) % 10]; let chiNam = CHI[(ly + 8) % 12];
+            let canThang = CAN[(ly * 12 + lunar[1] + 3) % 10]; let chiThang = CHI[(lunar[1] + 1) % 12];
+            let canNgay = CAN[(jd + 9) % 10]; let chiNgay = CHI[(jd + 1) % 12];
+            let chiGioIndex = Math.floor(((hh + 1) % 24) / 2) % 12; let chiGio = CHI[chiGioIndex];
+            let canGio = CAN[(( (jd + 9) % 5) * 2 + chiGioIndex) % 10];
+            return { 
+                nam: `${canNam} ${chiNam}`, 
+                thang: `${canThang} ${chiThang}`, 
+                ngay: `${canNgay} ${chiNgay}`, 
+                gio: `${canGio} ${chiGio}`,
+                yearInt: ly
+            };
+        }
+
+        const SOLAR_TERMS = ["Xuân phân", "Thanh minh", "Cốc vũ", "Lập hạ", "Tiểu mãn", "Mang chủng", "Hạ chí", "Tiểu thử", "Đại thử", "Lập thu", "Xử thử", "Bạch lộ", "Thu phân", "Hàn lộ", "Sương giáng", "Lập đông", "Tiểu tuyết", "Đại tuyết", "Đông chí", "Tiểu hàn", "Đại hàn", "Lập xuân", "Vũ thủy", "Kinh trập"];
+        function toRadians(deg) { return deg * Math.PI / 180; }
+        
+        function calcSolarLongitude(date) {
+            var JD = (date.getTime() / 86400000.0) + 2440587.5;
+            var T = (JD - 2451545.0) / 36525;
+            var L0 = 280.46645 + 36000.76983 * T + 0.0003032 * T * T;
+            var M = 357.52910 + 35999.05030 * T - 0.0001559 * T * T - 0.00000048 * T * T * T;
+            var C = (1.914600 - 0.004817 * T - 0.000014 * T * T) * Math.sin(toRadians(M)) + (0.01993 - 0.000101 * T) * Math.sin(toRadians(2 * M)) + 0.000290 * Math.sin(toRadians(3 * M));
+            var theta = L0 + C; var lambda = (theta - 0.00569 - 0.00478 * Math.sin(toRadians(125.04 - 1934.136 * T))) % 360;
+            if (lambda < 0) lambda += 360; return lambda;
+        }
+
+        // --- HÀM MỚI: TÍNH CAN CHI THEO TIẾT KHÍ CHÍNH XÁC ---
+        function getSolarCanChi(date) {
+            // 1. Tính Solar Year (Trụ Năm) dựa trên Lập Xuân (315 độ)
+            let currentYear = date.getFullYear();
+            
+            // Tìm thời điểm Lập xuân chính xác của năm nay
+            let guessDate = new Date(currentYear, 1, 4); 
+            let lapXuanDate = findTermTransitionByAngle(guessDate, 315);
+            
+            let solarYear;
+            if (date.getTime() >= lapXuanDate.getTime()) {
+                solarYear = currentYear;
+            } else {
+                solarYear = currentYear - 1;
+            }
+
+            // Can Chi Năm
+            let canNamIdx = (solarYear + 6) % 10; 
+            let chiNamIdx = (solarYear + 8) % 12; 
+            let strNam = `${CAN[canNamIdx]} ${CHI[chiNamIdx]}`;
+
+            // 2. Tính Solar Month (Trụ Tháng) dựa vào Kinh độ mặt trời hiện tại
+            let lambda = calcSolarLongitude(date);
+            
+            let monthBranchIdx = Math.floor(((lambda + 45) % 360) / 30) + 2;
+            if (monthBranchIdx >= 12) monthBranchIdx -= 12;
+
+            // Can Tháng: Ngũ Hổ Độn
+            let startStem = (canNamIdx % 5) * 2 + 2; 
+            let diff = monthBranchIdx - 2;
+            if (diff < 0) diff += 12;
+            
+            let canThangIdx = (startStem + diff) % 10;
+            let strThang = `${CAN[canThangIdx]} ${CHI[monthBranchIdx]}`;
+
+            // 3. Ngày và Giờ
+            let dd = date.getDate(); let mm = date.getMonth() + 1; let yy = date.getFullYear();
+            let jd = jdFromDate(dd, mm, yy);
+            let canNgay = CAN[(jd + 9) % 10]; let chiNgay = CHI[(jd + 1) % 12];
+            
+            let hh = date.getHours();
+            let chiGioIndex = Math.floor(((hh + 1) % 24) / 2) % 12; 
+            let canGio = CAN[(( (jd + 9) % 5) * 2 + chiGioIndex) % 10];
+            let strGio = `${canGio} ${CHI[chiGioIndex]}`;
+
+            return {
+                nam: strNam,
+                thang: strThang,
+                ngay: `${canNgay} ${chiNgay}`,
+                gio: strGio,
+                yearInt: solarYear, // Năm dương lịch dùng để tính Thái tuế (Phong thủy)
+                solarBranchIdx: chiNamIdx
+            };
+        }
+
+        // Tìm thời điểm chính xác khi mặt trời đạt góc targetAngle
+        function findTermTransitionByAngle(approxDate, targetAngle) {
+            let start = approxDate.getTime() - 2 * 86400000;
+            let end = approxDate.getTime() + 2 * 86400000;
+            
+            for (let i = 0; i < 20; i++) {
+                let mid = (start + end) / 2;
+                let d = new Date(mid);
+                let l = calcSolarLongitude(d);
+                
+                let delta = l - targetAngle;
+                while (delta <= -180) delta += 360;
+                while (delta > 180) delta -= 360;
+
+                if (delta < 0) {
+                    start = mid; 
+                } else {
+                    end = mid; 
+                }
+            }
+            return new Date(end);
+        }
+
+        // Helper cho hiển thị ngày tiết khí cũ
+        function findNextTermTransition(currentDate) {
+            let currentLambda = calcSolarLongitude(currentDate);
+            let nextTarget = Math.floor(currentLambda / 15) * 15 + 15; if (nextTarget >= 360) nextTarget = 0; 
+            let start = currentDate.getTime(); let end = start + 16 * 24 * 60 * 60 * 1000; 
+            for (let i = 0; i < 20; i++) { let mid = (start + end) / 2; let midLambda = calcSolarLongitude(new Date(mid)); let diff = midLambda - nextTarget; if (nextTarget === 0 && midLambda > 180) diff = midLambda - 360; if (diff < 0) start = mid; else end = mid; }
+            return new Date(end);
+        }
+        function findPreviousTermTransition(currentDate) {
+            let currentLambda = calcSolarLongitude(currentDate);
+            let prevTarget = Math.floor(currentLambda / 15) * 15; 
+            let end = currentDate.getTime(); let start = end - 16 * 24 * 60 * 60 * 1000; 
+            for (let i = 0; i < 20; i++) { let mid = (start + end) / 2; let midLambda = calcSolarLongitude(new Date(mid)); let diff = midLambda - prevTarget; if (prevTarget === 0 && midLambda > 300) diff = midLambda - 360; if (diff < 0) start = mid; else end = mid; }
+            return new Date(end);
+        }
+        function getCurrentSolarTermName(lambda) { return SOLAR_TERMS[Math.floor(lambda / 15)]; }
+        function formatDateFull(date) { 
+            return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')} - ${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`; 
+        }
+
+        // --- 2. VẼ LA BÀN ---
+        function polarToCartesian(cx, cy, r, angle) {
+            var rad = (angle - 90) * Math.PI / 180.0;
+            return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+        }
+        function drawSector(id, start, end, color, opacity) {
+            const CX = 190, CY = 190, R = 180; 
+            var s = polarToCartesian(CX, CY, R, end); var e = polarToCartesian(CX, CY, R, start);
+            var large = end - start > 180 ? 1 : 0;
+            var d = ["M", CX, CY, "L", s.x, s.y, "A", R, R, 0, large, 0, e.x, e.y, "Z"].join(" ");
+            let p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            p.setAttribute("d", d); p.setAttribute("fill", color); p.setAttribute("fill-opacity", opacity); p.setAttribute("stroke", "none");
+            return p;
+        }
+        
+        // UPDATE PHONG THỦY: LUÔN DÙNG SOLAR YEAR
+        function updateFengShuiLayers(solarBranchIndex) {
+            const layer = document.getElementById('fengShuiLayer'); layer.innerHTML = ''; 
+            
+            // Thái Tuế
+            let taiSuiAngle = solarBranchIndex * 30; 
+            layer.appendChild(drawSector("ts1", taiSuiAngle - 7.5, taiSuiAngle + 7.5, "#ff9800", "0.5"));
+            layer.appendChild(drawSector("ts2", (taiSuiAngle + 180) - 7.5, (taiSuiAngle + 180) + 7.5, "#ff9800", "0.5"));
+            
+            // Tam Sát
+            let mod = solarBranchIndex % 4; 
+            let sS, sE;
+            if (mod === 0) { sS = 135; sE = 225; } 
+            else if (mod === 1) { sS = 45; sE = 135; } 
+            else if (mod === 2) { sS = 315; sE = 405; } 
+            else { sS = 225; sE = 315; }
+            
+            layer.appendChild(drawSector("ss", sS, sE, "#f44336", "0.4"));
+        }
+        
+        const svgGroup = document.getElementById('dynamicContent');
+        const NS = "http://www.w3.org/2000/svg";
+        const mountains24 = ["Tý", "Quý", "Sửu", "Cấn", "Dần", "Giáp", "Mão", "Ất", "Thìn", "Tốn", "Tỵ", "Bính", "Ngọ", "Đinh", "Mùi", "Khôn", "Thân", "Canh", "Dậu", "Tân", "Tuất", "Càn", "Hợi", "Nhâm"];
+        const directions8 = ["BẮC", "ĐÔNG BẮC", "ĐÔNG", "ĐÔNG NAM", "NAM", "TÂY NAM", "TÂY", "TÂY BẮC"];
+        const CX = 190, CY = 190;
+
+        function createLine(angle, rInner, rOuter, width) {
+            const line = document.createElementNS(NS, "line");
+            line.setAttribute("x1", CX); line.setAttribute("y1", CY - rInner);
+            line.setAttribute("x2", CX); line.setAttribute("y2", CY - rOuter);
+            line.setAttribute("stroke", "#333"); line.setAttribute("stroke-width", width);
+            line.setAttribute("transform", `rotate(${angle}, ${CX}, ${CY})`); return line;
+        }
+        function createText(textStr, angle, pathId, className) {
+            const textEl = document.createElementNS(NS, "text");
+            textEl.setAttribute("class", className); textEl.setAttribute("dy", "8"); 
+            textEl.setAttribute("transform", `rotate(${angle}, ${CX}, ${CY})`);
+            const textPath = document.createElementNS(NS, "textPath");
+            textPath.setAttribute("href", `#${pathId}`); textPath.setAttribute("startOffset", "25%");
+            textPath.setAttribute("text-anchor", "middle"); textPath.textContent = textStr;
+            textEl.appendChild(textPath); return textEl;
+        }
+        for (let i = 0; i < 24; i++) {
+            svgGroup.appendChild(createLine(7.5 + (i * 15), 150, 180, 1));
+            svgGroup.appendChild(createText(mountains24[i], i * 15, "pathOuter", "text-ring-outer"));
+        }
+        for (let i = 0; i < 8; i++) {
+            svgGroup.appendChild(createLine(22.5 + (i * 45), 120, 150, 1.5));
+            svgGroup.appendChild(createText(directions8[i], i * 45, "pathInner", "text-ring-inner"));
+        }
+
+        // --- 3. LOGIC INPUT THỦ CÔNG ---
+        let isRealTime = true;
+        let customDate = new Date();
+        const inpDay = document.getElementById('inpDay');
+        const inpMonth = document.getElementById('inpMonth');
+        const inpYear = document.getElementById('inpYear');
+        const inpHour = document.getElementById('inpHour');
+        const inpMin = document.getElementById('inpMin');
+
+        function updateFromInput() {
+            if (isRealTime) return;
+            
+            let d = parseInt(inpDay.value) || 1;
+            let m = parseInt(inpMonth.value) || 1;
+            let y = parseInt(inpYear.value) || 1900;
+            let h = parseInt(inpHour.value) || 0;
+            let min = parseInt(inpMin.value) || 0;
+
+            if(m > 12) m = 12; if(m < 1) m = 1;
+            if(d > 31) d = 31; if(d < 1) d = 1;
+            if(h > 23) h = 23; if(h < 0) h = 0;
+            if(min > 59) min = 59; if(min < 0) min = 0;
+
+            customDate = new Date(y, m - 1, d, h, min, 0);
+            updateClock();
+            updateInfoPreview(customDate);
+        }
+
+        function updateInfoPreview(date) {
+            const lunar = convertSolar2Lunar(date.getDate(), date.getMonth() + 1, date.getFullYear(), 7);
+            const cc = getSolarCanChi(date);
+            const lam = calcSolarLongitude(date);
+            const term = getCurrentSolarTermName(lam);
+            
+            const infoBox = document.getElementById('infoPreview');
+            infoBox.innerHTML = `
+                <div class="preview-lunar">Âm lịch: ${lunar[0]}/${lunar[1]} ${lunar[3]?'(Nhuận)':''}</div>
+                <div class="preview-canchi">${cc.ngay} - ${cc.gio}</div>
+                <div class="preview-term">Tiết: ${term}</div>
+            `;
+        }
+
+        function toggleRealTime() {
+            isRealTime = document.getElementById('realTimeSwitch').checked;
+            const label = document.getElementById('modeLabel');
+            const manualArea = document.getElementById('manualInputArea');
+            
+            if (isRealTime) {
+                label.innerText = "Thời gian thực"; label.style.color = "#007aff"; 
+                manualArea.classList.remove('active');
+            } else {
+                label.innerText = "Chọn thủ công"; label.style.color = "#ff9500"; 
+                manualArea.classList.add('active');
+                
+                let now = new Date(); customDate = now;
+                inpDay.value = now.getDate();
+                inpMonth.value = now.getMonth() + 1;
+                inpYear.value = now.getFullYear();
+                inpHour.value = now.getHours();
+                inpMin.value = now.getMinutes();
+                
+                updateInfoPreview(now);
+            }
+            updateClock();
+        }
+
+        // --- 4. APP LOGIC ---
+        let lastSolarBranchIdx = -1; // Để check update la bàn
+
+        function updateClock() {
+            const now = isRealTime ? new Date() : customDate;
+            const isSolarMode = document.getElementById('solarModeSwitch').checked;
+            
+            // Cập nhật text chế độ
+            const modeText = document.getElementById('calendarModeText');
+            modeText.innerText = isSolarMode ? "Tiết Khí" : "Âm Lịch";
+            modeText.style.color = isSolarMode ? "#007aff" : "#666";
+
+            // Hiển thị giờ cơ bản
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clockTime').innerText = `${h}:${m}`;
+            
+            const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+            document.getElementById('clockDay').innerText = days[now.getDay()];
+            document.getElementById('clockDate').innerText = `Ngày ${now.getDate()} tháng ${now.getMonth()+1} năm ${now.getFullYear()}`;
+
+            const lunar = convertSolar2Lunar(now.getDate(), now.getMonth() + 1, now.getFullYear(), 7);
+            document.getElementById('clockLunar').innerText = `Ngày ${lunar[0]}/${lunar[1]} Âm lịch ${lunar[3]?'(Nhuận)':''}`;
+
+            // --- TÍNH CAN CHI ---
+            const solarCC = getSolarCanChi(now);
+            
+            if (solarCC.solarBranchIdx !== lastSolarBranchIdx) {
+                lastSolarBranchIdx = solarCC.solarBranchIdx;
+                updateFengShuiLayers(lastSolarBranchIdx);
+            }
+
+            let displayCC;
+            if (isSolarMode) {
+                displayCC = solarCC; // Tiết Khí
+            } else {
+                displayCC = getCanChiObjLunar(now.getDate(), now.getMonth()+1, now.getFullYear(), now.getHours());
+            }
+
+            document.getElementById('ccYear').innerText = displayCC.nam;
+            document.getElementById('ccMonth').innerText = displayCC.thang;
+            document.getElementById('ccDay').innerText = displayCC.ngay;
+            document.getElementById('ccHour').innerText = displayCC.gio;
+
+            // Solar Term Info
+            const lam = calcSolarLongitude(now);
+            const term = getCurrentSolarTermName(lam);
+            const prevDate = findPreviousTermTransition(now);
+            const nextDate = findNextTermTransition(now);
+            
+            document.getElementById('solarTermName').innerText = term;
+            document.getElementById('solarTermStart').innerText = formatDateFull(prevDate);
+            document.getElementById('solarTermEnd').innerText = formatDateFull(nextDate);
+        }
+
+        // --- EVENTS ---
+        const compassZone = document.getElementById('compassZone');
+        const needleContainer = document.getElementById('needleContainer');
+        const btnWheelMode = document.getElementById('btnWheelMode');
+        let isDragging = false, isWheelMode = false, currentAngle = 0;
+
+        function updateDisplay(angle) {
+            needleContainer.style.transform = `rotate(${angle}deg)`;
+            let norm = angle % 360; if(norm < 0) norm += 360;
+            document.getElementById('degNum').innerText = `${Math.round(norm)}°`;
+            let dIdx = Math.floor((norm + 22.5)/45)%8;
+            let mIdx = Math.floor((norm + 7.5)/15)%24;
+            document.getElementById('dirInfo').innerText = `${directions8[dIdx]} - ${mountains24[mIdx]}`;
+        }
+        function handleDrag(e) {
+            if (isWheelMode) return;
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            const rect = compassZone.getBoundingClientRect();
+            let deg = Math.atan2(cy - (rect.top + rect.height/2), cx - (rect.left + rect.width/2)) * (180/Math.PI) + 90;
+            currentAngle = deg; updateDisplay(deg);
+        }
+        compassZone.addEventListener('mousedown', e => { if(!isWheelMode){isDragging=true; handleDrag(e);} });
+        window.addEventListener('mousemove', e => { if(isDragging) handleDrag(e); });
+        window.addEventListener('mouseup', () => isDragging=false);
+        compassZone.addEventListener('touchstart', e => { if(!isWheelMode){isDragging=true; handleDrag(e); e.preventDefault();} }, {passive:false});
+        window.addEventListener('touchmove', e => { if(isDragging){handleDrag(e); e.preventDefault();} }, {passive:false});
+        window.addEventListener('touchend', () => isDragging=false);
+
+        function toggleWheelMode() {
+            isWheelMode = !isWheelMode;
+            btnWheelMode.classList.toggle('active');
+            compassZone.style.cursor = isWheelMode ? 'ns-resize' : 'default';
+        }
+        window.addEventListener('wheel', e => {
+            if (isWheelMode && document.getElementById('tab-compass').classList.contains('active')) {
+                currentAngle += (e.deltaY > 0 ? 1 : -1) * 0.5; updateDisplay(currentAngle);
+            }
+        });
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${id}`).classList.add('active');
+            const btns = document.querySelectorAll('.tab-btn');
+            if(id === 'compass') btns[0].classList.add('active'); else btns[1].classList.add('active');
+        }
+
+        // INIT
+        setInterval(updateClock, 1000);
+        updateClock();
+
+    </script>
+</body>
+</html>
